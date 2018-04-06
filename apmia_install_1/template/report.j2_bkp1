@@ -1,0 +1,10 @@
+{{ st_win_dir }}
+{{ st_aix_dir }}
+{{ st_linux_dir }}
+-----------status--------------------------------------------------------------------------------------------------------------------------
+Host Name              |    Command   |   Status  |     Output
+{% for itm in play_hosts  -%}
+-------------------------------------------------------------------------------------------------------------------------------------------
+{{ hostvars[itm]['ansible_hostname'] }}    |    {{ hostvars[itm].optn1.user_input }}   |  {% if hostvars[itm].ansible_os_family == "RedHat" or hostvars[itm].ansible_os_family == "Debian" or hostvars[itm].ansible_os_family == "Suse" %}{% if st_linux_dir.stat.exists == false %}Pass{% else %}{% if hostvars[itm].outp_linux.failed == "true" %} Failed {% else %} Pass {% endif %}{% endif %} {% elif hostvars[itm].ansible_os_family == "AIX" %} {% if st_aix_dir.stat.exists == false %}Pass{% else %} {% if hostvars[itm].outp_aix.failed=="true" %} Failed {% else %} Pass {% endif %}{% endif %} {% else %}{% if st_win_dir.stat.exists == false %}Pass{% else %}{% if hostvars[itm].status_apmia_win.failed=="true" %} Failed {% else %} Pass {% endif %}{% endif %} {% endif %} |{% if hostvars[itm].ansible_os_family == "RedHat" or hostvars[itm].ansible_os_family == "Debian" or hostvars[itm].ansible_os_family == "Suse" %}{% if st_linux_dir.stat.exists == false %} APMIA not present at mention path{% else %} {{ hostvars[itm].outp_linux.stdout_lines|to_yaml }}{% endif %} {% elif hostvars[itm].ansible_os_family == "AIX" %}{% if st_aix_dir.stat.exists == false %} APMIA not present at mention location {% else %} {{ hostvars[itm].outp_aix.stdout_lines|to_yaml }} {% endif %} {% else %}{% if st_win_dir.stat.exists == false %}APMIA not present at mention location{%else%} {{ hostvars[itm].status_apmia_win.stdout_lines|to_yaml }}{% endif %}{% endif %}
+{% endfor %}
+

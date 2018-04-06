@@ -1,0 +1,47 @@
+---
+- pause:
+    prompt: "Select From Below Options:\n1. install \n2. uninstall\n3. clean_uninstall\n4. status\n5. start\n6. stop\n7. force_start\n8. force_stop\n9. restart\n"
+  register: optn1
+  run_once: true
+- block:
+   - debug:
+       msg: "Please select valid Option from above list ( for example: install)"
+   - meta: end_play
+  when: ( "install" not in optn1.user_input ) and (  "uninstall" not in optn1.user_input ) and ( "clean_uninstall" not in optn1.user_input ) and ( "start" not in optn1.user_input ) and ( "stop" not in optn1.user_input ) and ( "status" not in optn1.user_input ) and ( "restart" not in optn1.user_input )
+  run_once: true
+
+- set_fact: "{{ optn1.user_input }}"
+- name: including variable
+  include_vars: ../vars/variables.yml
+- include_vars: "../vars/{{ inventory_hostname }}.yml"
+    
+- script: ../files/machinos.sh
+  failed_when: false
+  no_log: true
+  ignore_errors: true
+  register: machineos
+#  when: ansible_os_family == "RedHat" or ansible_os_family == "Debian" or ansible_os_family == "Suse" or ansible_os_family == "Fedora"
+- block:
+    - raw: dnf install -y python2 python2-dnf libselinux-python
+      failed_when: false
+      no_log: true
+      #ignore_errors: yes
+    - raw: yum -y install python-simplejson
+      failed_when: false
+      no_log: true
+      #ignore_errors: yes
+    - raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+      failed_when: false
+      no_log: true
+  when: machineos.failed == false and "Linux" in machineos.stdout
+
+      #ignore_errors: yes
+  #failed_when: false
+  #no_log: true
+- setup:
+#- debug:
+#    msg: "Please select valid Option from install, uninstall or clean_uninstall"
+#  when: ( "install" not in optn1.user_input ) or (  "uninstall" not in optn1.user_input ) or ( "clean_uninstall" not in optn1.user_input ) or ( "start" not in optn1.user_input ) or ( "stop" not in optn1.user_input ) or ( "status" not in optn1.user_input ) or ( "restart" not in optn1.user_input )
+#  when: ( optn1.user_input != "install" ) or ( optn1.user_input != "uninstall" ) or ( optn1.user_input != "clean_uninstall" )
+- include_tasks: "{{ optn1.user_input }}.yml"
+  when: ( optn1.user_input == "install" ) or ( optn1.user_input == "uninstall" ) or ( optn1.user_input == "clean_uninstall" ) or ( optn1.user_input == "status" ) or ( optn1.user_input == "start" ) or ( optn1.user_input == "stop" ) or ( optn1.user_input == "restart" ) or ( optn1.user_input == "force_start" ) or ( optn1.user_input == "force_stop" )

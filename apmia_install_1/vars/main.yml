@@ -1,0 +1,4 @@
+---
+# vars file for APMIA
+path_linux: "/root/"
+path_win: "C:\\Program Files\\"

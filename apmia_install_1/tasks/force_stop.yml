@@ -1,0 +1,190 @@
+- name: Tasks for Windows
+  block:
+    - name: "windows Checking status of apmia1"
+      win_stat:
+        path: "{{ path_win }}/apmia"
+      register: st_win
+  
+    - name: Force Stop APMIA
+      win_command: apmia-ca-installer.bat force_stop
+      args:
+        chdir: "{{ path_win }}/apmia/"
+      register: outp_win
+      ignore_errors: yes
+      when: st_win.stat.exists == true
+
+    - name: Check the status of apmia directory
+      win_stat:
+        path: "{{ path_win }}/apmia"
+      register: st_win_dir
+
+  when: ansible_os_family == "Windows"
+
+- name: Tasks for Linux
+  block:
+    - name: check the status of apmiadir
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+
+    - name: Checking pid file status
+      stat:
+        path: "{{ path_linux }}/apmia/bin/apmia.pid"
+      register: st_pid
+
+    - name: "Get PID"
+      command: cat apmia.pid
+      args:
+        chdir: "{{ path_linux }}/apmia/bin/"
+      register: pid_apmia
+      ignore_errors: yes
+      when: st_pid.stat.exists == true
+#    - debug:
+#        var: pid_apmia.stdout
+
+    - name: "Force Stoping apmia"
+      command: "kill -9 {{ pid_apmia.stdout }}"
+      when: st_pid.stat.exists == true
+      register: pid_kill
+      ignore_errors: yes
+
+    - debug:
+        msg: APMIA is stopped with force_stop
+      when: pid_apmia.stdout is defined
+
+    - name: Removing apmia.pid
+      file:
+        path: "{{ path_linux }}/apmia/bin/apmia.pid"
+        state: absent
+      ignore_errors: yes
+      when: pid_kill.rc is defined
+    - debug:
+        msg: "apmia not running with Force_start, unable to stop"
+      when: st_pid.stat.exists == false
+
+    - name: Status of APMIA
+      command: ./apmia-ca-installer.sh status
+      args:
+        chdir: "{{ path_linux }}/apmia/"
+      register: outp_linux
+      when: st_linux_dir.stat.exists == true
+
+    - name: check the status of apmiadir
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+    
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Suse" or ansible_os_family == "Debian"
+
+- name: Tasks for AIX
+  block:
+    - name: check the status of apmiadir
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+    - name: Checking pid file status
+      stat:
+        path: "{{ path_aix }}/apmia/bin/apmia.pid"
+      register: st_pid
+
+    - name: "Get PID"
+      command: cat apmia.pid
+      args:
+        chdir: "{{ path_aix }}/apmia/bin/"
+      register: pid_apmia
+      ignore_errors: yes
+      when: st_pid.stat.exists == true
+    - name: "Force Stoping apmia"
+      command: "kill -9 {{ pid_apmia.stdout }}" 
+      when: st_pid.stat.exists == true
+      register: pid_kill
+      ignore_errors: yes
+    - debug:
+        msg: APMIA is stopped with force_stop
+      when: pid_apmia.stdout is defined
+    - name: Removing apmia.pid
+      file:
+        path: "{{ path_aix }}/apmia/bin/apmia.pid"
+        state: absent
+      ignore_errors: yes
+      when: pid_kill.rc is defined
+    - debug:
+        msg: "apmia not running with Force_start, unable to stop"
+      when: st_pid.stat.exists == false
+    - name: Checking status of APMIA
+      command: ./apmia-ca-installer.sh status
+      args:
+        chdir: "{{ path_aix }}/apmia/"
+      register: outp_aix
+      when: st_aix_dir.stat.exists == true
+
+    - name: Check the status of apmia directory
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+
+  when: ansible_os_family == "AIX"
+
+
+
+- name: status block
+  block:
+    - debug:
+        msg: "apmia not preasent at location {{ path_win }} please check location"
+      when: st_win_dir.stat.exists == false
+    - debug:
+        var: outp_win.stdout_lines
+  when: ansible_os_family == "Windows"
+
+
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at path {{ path_linux }}"
+      when: st_linux_dir.stat.exists == false
+    - debug:
+        msg: APMIA is stopped with force_stop
+      when: st_linux_dir.stat.exists == true
+  when:  ansible_os_family == "RedHat" or  ansible_os_family == "Suse" or ansible_os_family == "Debian"
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at locating {{ path_aix }}"
+      when: st_aix_dir.stat.exists == false
+    - debug:
+        msg: APMIA is stopped with force_stop
+      when: st_aix_dir.stat.exists == true
+  when: ansible_os_family == "AIX"
+
+- name: Block for Report
+  block:
+    - template:
+         src: ../template/report.j2
+         dest: /etc/ansible/roles/apmia_install/report/report.log
+      delegate_to: localhost
+      failed_when: false
+    - local_action: command  cat /etc/ansible/roles/apmia_install/report/report.log
+      register: report
+      run_once: true
+    - debug:
+        var: report.stdout_lines
+      run_once: true
+  when: ansible_os_family == "Windows"
+
+   
+
+#- name: Block for Report
+#  block:
+#    - template:
+#         src: ../template/report.j2
+#         dest: /etc/ansible/roles/apmia_install/report/report.log
+#      delegate_to: localhost
+#      failed_when: false
+#    - local_action: command  cat /etc/ansible/roles/apmia_install/report/report.log
+#      register: report
+#      run_once: true
+#    - debug:
+#        var: report.stdout_lines
+#      run_once: true
+#  when: ansible_os_family == "Windows"
+

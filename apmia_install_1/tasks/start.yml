@@ -1,0 +1,155 @@
+- name: for Windows
+  block:
+    - name: "check the status of apmia dir"
+      win_stat:
+        path: "{{ path_win }}/apmia"
+      register: st_win
+
+    - win_find:
+        paths: "{{ path_win }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_win.stat.exists == true
+
+    - name: Removing Empty directory
+      win_file:
+        state: absent
+        path: "{{ path_win }}/apmia"
+      register: removed_empty_dir
+      when: st_win.stat.exists == true and dir_files.matched|int == 0
+
+    - name: "check the status of apmia dir"
+      win_stat:
+        path: "{{ path_win }}/apmia"
+      register: st_win_dir
+
+
+    - name: Starting the APMIA
+      win_command: apmia-ca-installer.bat start
+      args:
+        chdir: "{{ path_win }}/apmia/"
+      register: outp_win
+      failed_when: false
+      when: st_win_dir.stat.exists == true
+  when: ansible_os_family == "Windows"
+
+
+- name: for linux
+  block:
+    - name: "check the status of apmia dir"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux
+
+    - find:
+        paths: "{{ path_linux }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_linux.stat.exists == true
+   
+    - name: Removing Empty directory
+      file:
+        state: absent
+        path: "{{ path_linux }}/apmia"
+      register: removed_empty_dir
+      when: st_linux.stat.exists == true and dir_files.matched|int == 0
+   
+    - name: "check the status of apmia dir"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+
+
+    - name: Starting the APMIA
+      command: ./apmia-ca-installer.sh start
+      args:
+        chdir: "{{ path_linux }}/apmia/"
+      failed_when: false
+      register: outp_linux
+      when: st_linux_dir.stat.exists == true
+  when: ansible_os_family == "RedHat" or  ansible_os_family == "Suse" or ansible_os_family == "Debian"
+
+- name: for AIX
+  block:
+    - name: Check the status of apmia direcotry
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix 
+  
+    - find:
+        paths: "{{ path_aix }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_aix.stat.exists == true
+
+    - name: Removing Empty directory
+      file:
+        state: absent
+        path: "{{ path_aix }}/apmia"
+      register: removed_empty_dir
+      when: st_aix.stat.exists == true and dir_files.matched|int == 0
+
+    - name: Check the status of apmia directory
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+
+
+    - name: Starting APMIA
+      command: ./apmia-ca-installer.sh start
+      args:
+        chdir: "{{ path_aix }}/apmia/"
+      register: outp_aix
+      when: st_aix_dir.stat.exists == true
+      failed_when: false
+  when: ansible_os_family == "AIX"
+
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at locating {{ path_win }}"
+      when: st_win_dir.stat.exists == false
+    - debug:
+        var: outp_win.stdout_lines
+      when: st_win_dir.stat.exists == true
+  when: ansible_os_family == "Windows"
+
+
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at path {{ path_linux }}"
+      when: st_linux_dir.stat.exists == false
+    - debug:
+        var: outp_linux.stdout_lines
+      when: st_linux_dir.stat.exists == true
+  when:  ansible_os_family == "RedHat" or  ansible_os_family == "Suse" or ansible_os_family == "Debian" 
+
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at locating {{ path_aix }}"
+      when: st_aix_dir.stat.exists == false
+    - debug:
+        var: outp_aix.stdout_lines
+      when: st_aix_dir.stat.exists == true
+  when: ansible_os_family == "AIX"
+
+
+
+- name: Block for Report
+  block:
+    - template:
+         src: ../template/report.j2
+         dest: /etc/ansible/roles/apmia_install/report/report.log
+      delegate_to: localhost
+    - local_action: command  cat /etc/ansible/roles/apmia_install/report/report.log
+      register: report
+      run_once: true
+    - debug:
+        var: report.stdout_lines
+      run_once: true
+

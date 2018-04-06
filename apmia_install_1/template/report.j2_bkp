@@ -1,0 +1,7 @@
+{{ optn1.user_input }}
+-----------status--------------------------------------------------------------------------------------------------------------------------
+Host Name              |    Command   |   Status  |     Output
+{% for itm in hostvars  -%}
+-------------------------------------------------------------------------------------------------------------------------------------------
+{{ hostvars[itm]['ansible_hostname'] }}    |    {{ hostvars[itm].optn1.user_input }}   |   {% if hostvars[itm].ansible_os_family == "RedHat" or hostvars[itm].ansible_os_family == "Debian" or hostvars[itm].ansible_os_family == "Suse" %}{% if hostvars[itm].outp_linux.failed == "true" %} Failed {% else %} Pass {% endif %} {% else %} {% if hostvars[itm].outp_aix.failed=="true" %} Failed {% else %} Pass {% endif %}{% endif %} |{% if hostvars[itm].ansible_os_family == "RedHat" or hostvars[itm].ansible_os_family == "Debian" or hostvars[itm].ansible_os_family == "Suse" %} {{ hostvars[itm].outp_linux.stdout_lines|to_yaml }} {% else %} {{ hostvars[itm].outp_aix.stdout_lines|to_yaml }} {% endif %}
+{% endfor %}

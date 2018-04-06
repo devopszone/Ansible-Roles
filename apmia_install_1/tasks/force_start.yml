@@ -1,0 +1,222 @@
+- name: for Windows
+  block:
+    - name: "check the status of apmia dir"
+      win_stat:
+        path: "{{ path_win }}\\apmia"
+      register: st_win_dir
+
+    - win_find:
+        paths: "{{ path_win }}\\apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_win_dir.stat.exists == true
+
+    - name: Removing Empty directory
+      win_file:
+        state: absent
+        path: "{{ path_win }}\\apmia"
+      register: removed_empty_dir
+      when: st_win_dir.stat.exists == true and dir_files.matched|int == 0
+
+    - name: "check the status of apmia dir"
+      win_stat:
+        path: "{{ path_win }}\\apmia"
+      register: st_win_dir
+
+    - name: Copy compressed file to remote machine
+      win_copy:
+        src: ../files/apmia_wrapper_win.zip
+        dest: "{{ path_win }}\\"
+      register: win_copy
+      when: st_win_dir.stat.exists == false
+
+    - name: Extracting Compressed file in "{{ ansible_hostname }}" machine.
+      win_unzip:
+        src: "{{ path_win }}\\apmia_wrapper_win.zip"
+        dest: "{{ path_win }}\\"
+        delete_archive: yes
+      ignore_errors: yes
+      register: win_extract
+      when: st_win_dir.stat.exists == false and win_copy|succeeded
+
+    - name: "check the status of apmia dir"
+      win_stat:
+        path: "{{ path_win }}\\apmia"
+      register: st_win_dir
+
+
+    - name: Starting APMIA with Force_start
+#      win_shell: ./apmia-ca-installer.bat force_start
+      win_command: start /b  apmia-ca-installer.bat force_start
+      args:
+        chdir: "{{ path_win }}\\apmia\\"
+      register: outp_win
+      failed_when: false
+      when: st_win_dir.stat.exists == true
+
+    - name: Check the status of apmia directory
+      win_stat:
+        path: "{{ path_win }}/apmia"
+      register: st_win_dir
+
+  when: ansible_os_family == "Windows"
+
+
+
+- name: for linux
+  block:
+    - name: "check the status of apmia dir"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+
+    - find:
+        paths: "{{ path_linux }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_linux_dir.stat.exists == true
+   
+    - name: Removing Empty directory
+      file:
+        state: absent
+        path: "{{ path_linux }}/apmia"
+      register: removed_empty_dir
+      when: st_linux_dir.stat.exists == true and dir_files.matched|int == 0
+   
+    - name: "check the status of apmia dir"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+
+    - name: Extracting Compressed file.
+      unarchive:
+        src: ../files/apmia_wrapper_linux.tar
+        dest: "{{ path_linux }}"
+      register: linux_extract
+      when: st_linux_dir.stat.exists == false
+
+
+    - name: Starting APMIA with Force_start
+      shell: nohup ./apmia-ca-installer.sh force_start > /dev/null 2>&1 &
+      args:
+        chdir: "{{ path_linux }}/apmia/"
+      when: st_linux_dir.stat.exists == true or linux_extract|succeeded
+    
+    - name: Status of APMIA
+      command: ./apmia-ca-installer.sh status
+      args:
+        chdir: "{{ path_linux }}/apmia/"
+      register: outp_linux
+      when: st_linux_dir.stat.exists == true
+
+    - name: "check the status of apmia dir"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+    
+  when: ansible_os_family == "RedHat" or  ansible_os_family == "Suse" or ansible_os_family == "Debian"
+
+- name: for AIX
+  block:
+    - name: Checking status of apmia directory
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix 
+
+    - find:
+        paths: "{{ path_aix }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_aix.stat.exists == true
+
+    - name: Removing Empty directory
+      file:
+        state: absent
+        path: "{{ path_aix }}/apmia"
+      register: removed_empty_dir
+      when: st_aix.stat.exists == true and dir_files.matched|int == 0
+
+    - name: Check the status of apmia directory
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+
+    - name: Extracting Compressed file in "{{ ansible_hostname }}" machine.
+      unarchive:
+        src: ../files/apmia_wrapper_aix.tar.gz
+        dest: "{{ path_aix }}"
+      register: aix_extract
+      when: st_aix_dir.stat.exists == false
+
+
+
+    - name: Starting APMIA in force start mode
+      shell: nohup ./apmia-ca-installer.sh force_start > /dev/null 2>&1 &
+      args:
+        chdir: "{{ path_aix }}/apmia/"
+#      register: outp_aix
+      when: st_aix_dir.stat.exists == true or aix_extract|succeeded
+
+    - name: Checking status of APMIA
+      command: ./apmia-ca-installer.sh status
+      args:
+        chdir: "{{ path_aix }}/apmia/"
+      register: outp_aix
+      when: st_aix_dir.stat.exists == true
+
+    - name: Check the status of apmia directory
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+
+  when: ansible_os_family == "AIX"
+
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at path {{ path_win }}"
+      when: st_win_dir.stat.exists == false
+    - debug:
+        var: outp_win.stdout_lines
+      when: st_win_dir.stat.exists == true
+  when:  ansible_os_family == "Windows"
+
+
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at path {{ path_linux }}"
+      when: st_linux_dir.stat.exists == false
+    - debug:
+        var: outp_linux.stdout_lines
+      when: st_linux_dir.stat.exists == true
+  when:  ansible_os_family == "RedHat" or  ansible_os_family == "Suse" or ansible_os_family == "Debian" 
+- name: Status Block
+  block:
+    - debug:
+        msg: "apmia not present at locating {{ path_aix }}"
+      when: st_aix_dir.stat.exists == false
+    - debug:
+        var: outp_aix.stdout_lines
+      when: st_aix_dir.stat.exists == true
+  when: ansible_os_family == "AIX"
+
+
+- name: Block for Report
+  block:
+    - template:
+         src: ../template/report.j2
+         dest: /etc/ansible/roles/apmia_install/report/report.log
+      delegate_to: localhost
+      failed_when: false
+    - local_action: command  cat /etc/ansible/roles/apmia_install/report/report.log
+      register: report
+      run_once: true
+    - debug:
+        var: report.stdout_lines
+      run_once: true
+#  when:  (st_win_dir.stat.exists == true and (ansible_os_family == "RedHat"))
+#

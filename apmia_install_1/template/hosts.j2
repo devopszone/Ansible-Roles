@@ -1,0 +1,22 @@
+{% for item in csvfile.split("\n") %}
+{% if (loop.index == 0 or loop.index == 1) %}
+{{ hosts_list }}
+{% endif %}
+{% if loop.index != 1 %}
+{% set list = item.split(",") %}
+{% if list|count == 0 %}
+{% elif list|count == 1 %}
+{{ list[0]|trim() }}
+{% elif list|count == 2 %}
+{{ list[0]|trim() }} ansible_user={{ list[1]|trim() }}
+{% elif list|count == 3 %}
+{{ list[0]|trim() }} ansible_user={{ list[1]|trim() }} ansible_password={{ list[2]|trim() }}
+{% elif list|count == 4 %}
+{{ list[0]|trim() }} ansible_user={{ list[1]|trim() }} ansible_password={{ list[2]|trim() }} ansible_port={{ list[3]|trim }}
+{% elif list|count == 5 %}
+{{ list[0]|trim() }} ansible_user={{ list[1]|trim() }} ansible_password={{ list[2]|trim() }} ansible_port={{ list[3]|trim }} ansible_connection={{ list[4]|trim }}
+{% elif list|count == 6 %}
+{{ list[0]|trim() }} ansible_user={{ list[1]|trim() }} ansible_password={{ list[2]|trim() }} ansible_port={{ list[3]|trim }} ansible_connection={{ list[4]|trim }} ansible_winrm_server_cert_validation={{ list[5]|trim }}
+{% endif %}
+{% endif %}
+{% endfor %}

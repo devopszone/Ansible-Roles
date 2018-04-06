@@ -1,0 +1,8 @@
+path_linux: /root
+path_aix: /
+path_win: "C:/Program Files"
+path_suse: /root
+#vars_prompt:
+#    - name: "optn"
+#      prompt: "Select From Below Options:\n1. install \n2. uninstall\n3. clean_uninstall\n4. start\n5. stop\n6. status\n7. restart\n8. force_start\n9. force_stop\n"
+#      private: no

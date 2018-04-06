@@ -1,0 +1,23 @@
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  #become: true
+  vars:
+    csvfile: "{{ lookup('file', 'files/hosts_list.csv') }}"
+    hosts_list: "{{ lookup('file', '/etc/ansible/hosts') }}"
+  tasks:
+    - name: Parse CSV To hosts
+      template:
+        src: "template/hosts.j2"
+        dest: "/etc/ansible/hosts"
+      run_once: true
+    - meta: refresh_inventory
+
+- name: Calling APMIA Role
+  hosts: all
+  gather_facts: False
+#  become: true
+  tasks:
+    - include_role:
+          name: apmia_install
+   

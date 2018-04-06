@@ -1,0 +1,169 @@
+- set_fact:
+     st_linux_dir: '{"failed": "False", "stat": {"exists": "False"}, "changed": "False"}'
+- set_fact:
+     st_linux_dir: "{{ st_linux_dir | from_json }}"
+- set_fact:
+     st_aix_dir: '{"failed": "False", "stat": {"exists": "False"}, "changed": "False"}'
+- set_fact:
+     st_aix_dir: "{{ st_aix_dir | from_json }}"
+- set_fact:
+     st_win_dir: '{"failed": "False", "stat": {"exists": "False"}, "changed": "False"}'
+- set_fact:
+     st_win_dir: "{{ st_win_dir | from_json }}"
+
+- name: Tasks for Windows
+  block:
+    - name: Checking status of apmia folder
+      win_stat:
+        path: "{{ path_win }}\\apmia"
+      register: st_win_dir
+    - name: Clean Uninstall APMIA
+      win_command: apmia-ca-installer.bat clean_uninstall
+      args:
+        chdir: "{{ path_win }}\\apmia\\"
+      register: outp_win
+      ignore_errors: yes
+      when: st_win_dir.stat.exists == true
+    - debug:
+        msg: "apmia not preasent at location {{ path_win }} please check location"
+      when: st_win_dir.stat.exists == false
+    - name: Remove APMIA folder win
+      win_file:
+        path: "{{ path_win }}\\apmia\\"
+        state: absent
+      ignore_errors: yes
+      when: (outp_win.rc is defined) and (outp_win.rc == 0)
+
+   # - name: Checking status of apmia folder
+   #   win_stat:
+   #     path: "{{ path_win }}\\apmia"
+   #   register: st_win_dir
+
+  when: ansible_os_family == "Windows"
+
+
+- name: Tasks for Linux
+  block:
+    - name: "Linux Checking status of apmia"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+
+    - find:
+        paths: "{{ path_linux }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_linux_dir.stat.exists == true
+
+    - name: Removing Empty apmia Dir
+      file:
+        state: absent
+        path: "{{ path_linux }}/apmia"
+      register: removed_empty_dir
+      when: st_linux_dir.stat.exists == true and dir_files.matched|int == 0
+
+    - name: "Linux Checking status of apmia"
+      stat:
+        path: "{{ path_linux }}/apmia"
+      register: st_linux_dir
+
+
+    - name: "Clean Uninstall APMIA"
+      command: ./apmia-ca-installer.sh clean_uninstall
+      args:
+        chdir: "{{ path_linux }}/apmia/"
+      register: outp_linux
+      ignore_errors: yes
+      failed_when: false
+      when: st_linux_dir.stat.exists == true
+    - debug:
+        var: outp_linux.stdout
+      when: st_linux_dir.stat.exists == true
+    - debug:
+        msg: "apmia not preasent at location {{ path_linux }} please check location"
+      when: st_linux_dir.stat.exists == false
+    - name: Remove APMIA folder
+      file:
+        path: "{{ path_linux }}/apmia/"
+        state: absent
+      when: (outp_linux.rc is defined) and (outp_linux.rc == 0)
+
+    #- name: "Linux Checking status of apmia"
+    #  stat:
+    #    path: "{{ path_linux }}/apmia"
+    #  register: st_linux_dir
+  when: ansible_os_family == "RedHat" or ansible_os_family == "Suse" or ansible_os_family == "Debian"
+
+
+
+- name: Tasks for AIX
+  block:
+    - name: Checking status of apmia at location "{{ path_linux }}" in "{{ ansible_hostname }}" machine.
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+
+    - find:
+        paths: "{{ path_aix }}/apmia"
+        file_type: directory
+        patterns: "*"
+      register: dir_files
+      when: st_aix_dir.stat.exists == true
+
+    - name: Removing Empty apmia Dir
+      file:
+        state: absent
+        path: "{{ path_aix }}/apmia"
+      register: removed_empty_dir
+      when: st_aix_dir.stat.exists == true and dir_files.matched|int == 0
+
+    - name: "Linux Checking status of apmia"
+      stat:
+        path: "{{ path_aix }}/apmia"
+      register: st_aix_dir
+
+
+    - name: "Clean Uninstall APMIA"
+      command: ./apmia-ca-installer.sh clean_uninstall
+      args:
+        chdir: "{{ path_aix }}/apmia/"
+      register: outp_aix
+      ignore_errors: yes
+      when: st_aix_dir.stat.exists == true
+    - debug:
+        var: outp_aix.stdout
+      when: st_aix_dir.stat.exists == true
+    - debug:
+        msg: "apmia not preasent at location {{ path_aix }} please check location"
+      when: st_aix_dir.stat.exists == false
+    - name: Remove APMIA folder
+      file:
+        path: "{{ path_aix }}/apmia/"
+        state: absent
+      when: (outp_aix.rc is defined) and (outp_aix.rc == 0)
+
+    #- name: Checking status of apmia direcotry
+    #  stat:
+    #    path: "{{ path_aix }}/apmia"
+    #  register: st_aix_dir
+
+  when: ansible_os_family == "AIX"
+
+
+- name: Block for Report
+  block:
+    - template:
+         src: ../template/report.j2
+         dest: /etc/ansible/roles/apmia_install/report/report.log
+      delegate_to: localhost
+#      failed_when: false
+    - local_action: command  cat /etc/ansible/roles/apmia_install/report/report.log
+      register: report
+      run_once: true
+    - debug:
+        var: report.stdout_lines
+      run_once: true
+#  when:  (st_win_dir.stat.exists == true and (ansible_os_family == "RedHat"))
+#
+
